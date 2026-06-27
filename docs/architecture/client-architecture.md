@@ -64,6 +64,116 @@ export function ProjectCard() {
 
 스타일은 JSX에서 직접 읽히는 것을 우선한다. 같은 스타일이 여러 곳에서 반복되면 스타일 객체를 분리하지 않고, 먼저 공통 컴포넌트로 분리할 수 있는지 확인한다.
 
+
+## FSD 구조 기준
+
+클라이언트의 화면과 기능 배치는 FSD(Feature-Sliced Design)를 기준으로 한다.
+
+초기 MVP에서는 FSD를 과하게 엄격한 규칙으로 사용하지 않는다. 대신 화면, 기능, 도메인, 공통 코드를 어디에 둘지 흔들리지 않게 하는 구조 기준으로 사용한다.
+
+기본 레이어는 다음과 같다.
+
+- `app`: 앱 초기화, 라우터, 전역 provider, 전역 에러 경계
+- `pages`: 라우트 단위 화면 조립
+- `widgets`: 여러 feature와 entity를 조합하는 화면 영역
+- `features`: 사용자의 명확한 행동 단위
+- `entities`: 프로젝트, 문서, 분석 결과처럼 도메인 명사를 표현하는 모델과 UI
+- `shared`: 도메인에 묶이지 않는 공통 유틸, API 클라이언트, theme, 공통 UI
+
+레이어 책임은 다음 기준으로 나눈다.
+
+- 페이지 전체 레이아웃은 `pages`에 둔다.
+- 문서 목록 패널, 채팅 패널, 출처 패널처럼 화면의 큰 영역은 `widgets`에 둔다.
+- 프로젝트 생성, 문서 업로드, 질문 전송처럼 사용자가 수행하는 행동은 `features`에 둔다.
+- Project, Document, Source, Risk 같은 도메인 데이터 표현은 `entities`에 둔다.
+- Button, Modal, EmptyState, theme, API fetch helper처럼 도메인과 무관한 코드는 `shared`에 둔다.
+
+## FSD와 스타일 기준
+
+FSD는 파일과 책임을 나누는 구조 기준이고, 스타일 작성 방식은 기존 결정대로 React inline style 직접 작성 방식을 따른다.
+
+따라서 FSD를 적용해도 다음 원칙은 유지한다.
+
+- 레이어별 CSS 파일을 만들지 않는다.
+- slice별 CSS 파일을 만들지 않는다.
+- styled-components나 emotion을 추가하지 않는다.
+- 컴포넌트 하단의 `styles` 객체를 만들지 않는다.
+- JSX 요소의 `style={{ ... }}`에 스타일을 직접 작성한다.
+- 공통 디자인 토큰은 `shared/theme` 또는 `shared/config/theme.ts`에서 관리한다.
+
+반복되는 스타일은 스타일 객체로 분리하지 않는다. 먼저 `shared/ui`의 공통 컴포넌트나 해당 레이어 내부 컴포넌트로 분리할 수 있는지 확인한다.
+
+## import 방향
+
+FSD import 방향은 상위 레이어에서 하위 레이어로만 흐르게 한다.
+
+허용 방향은 다음과 같다.
+
+```text
+app -> pages -> widgets -> features -> entities -> shared
+```
+
+예시는 다음과 같다.
+
+- `pages`는 `widgets`, `features`, `entities`, `shared`를 사용할 수 있다.
+- `features`는 `entities`와 `shared`를 사용할 수 있다.
+- `entities`는 `shared`를 사용할 수 있다.
+- `shared`는 다른 레이어를 알지 않는다.
+
+피해야 할 방향은 다음과 같다.
+
+- `shared`에서 `entities`를 import하지 않는다.
+- `entities`에서 `features`를 import하지 않는다.
+- `features`에서 `widgets`나 `pages`를 import하지 않는다.
+- 같은 레이어의 서로 다른 slice가 내부 구현을 직접 import하지 않는다.
+
+## 초기 디렉터리 예시
+
+초기 MVP의 클라이언트 구조는 다음 형태를 기준으로 한다.
+
+```text
+src/
+  app/
+    App.tsx
+    router.tsx
+  pages/
+    projects/
+    workspace/
+  widgets/
+    document-panel/
+    chat-panel/
+    evidence-panel/
+  features/
+    create-project/
+    upload-document/
+    ask-question/
+  entities/
+    project/
+    document/
+    source/
+    risk/
+  shared/
+    api/
+    theme/
+    ui/
+    lib/
+```
+
+디렉터리는 실제 코드가 필요해질 때 만든다. 빈 디렉터리만 미리 만들지 않는다.
+
+## slice 내부 기준
+
+각 slice는 필요할 때 다음 파일을 가질 수 있다.
+
+```text
+model.ts
+api.ts
+ui.tsx
+index.ts
+```
+
+초기에는 파일을 과하게 나누지 않는다. 하나의 컴포넌트로 충분하면 `ui.tsx` 하나에서 시작하고, 상태나 API 호출이 커질 때 `model.ts`, `api.ts`로 분리한다.
+
 ## theme.ts 기준
 
 `theme.ts`는 공통 디자인 토큰만 관리한다.
@@ -163,4 +273,6 @@ React inline style로 구현하기 어려운 요구가 생기면 먼저 요구 �
 - 스타일은 JSX 요소의 `style={{ ... }}`에 직접 작성한다.
 - 공통 디자인 값은 `theme.ts`에서 가져온다.
 - 반복되는 UI는 스타일 객체가 아니라 공통 컴포넌트로 정리한다.
+- 화면과 기능 배치는 FSD 레이어 책임을 기준으로 정리한다.
+- import 방향은 `app -> pages -> widgets -> features -> entities -> shared` 흐름을 지킨다.
 - 예외가 필요하면 새 이슈로 분리해 결정한다.
