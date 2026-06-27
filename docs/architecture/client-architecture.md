@@ -74,8 +74,6 @@ export function ProjectCard() {
 - 폰트 크기
 - 간격
 - radius
-- 그림자
-- z-index
 
 포함하지 않는 값은 다음과 같다.
 
@@ -86,6 +84,8 @@ export function ProjectCard() {
 ## hover와 focus 처리
 
 React inline style은 CSS pseudo class를 직접 사용할 수 없다. 따라서 hover나 focus 상태가 꼭 필요한 경우 React state로 처리한다.
+
+hover 상태와 focus 상태는 같은 상태값으로 섞지 않는다. 키보드 접근성을 위해 focus는 `onFocus`와 `onBlur` 기준으로 별도 관리하고, 최소한의 포커스 표시를 항상 유지한다.
 
 다만 초기 MVP에서는 hover 효과를 과하게 만들지 않는다. 업무용 화면에서 필요한 최소한의 상태 표현만 사용한다.
 
