@@ -13,7 +13,7 @@ DocuMind 클라이언트는 프로젝트별 문서 분석 업무를 빠르게 �
 사용하는 방식은 다음과 같다.
 
 - JSX 요소의 `style={{ ... }}` 속성에 스타일을 직접 작성한다.
-- 공통 색상, 간격, 폰트 크기, radius 값은 `theme.ts`에서 관리한다.
+- 공통 색상, 간격, 폰트 크기, radius 값은 `shared/theme/theme.ts`에서 관리한다.
 - 버튼, 입력, 모달, 패널처럼 반복되는 UI는 공통 컴포넌트로 만든다.
 
 사용하지 않는 방식은 다음과 같다.
@@ -99,7 +99,7 @@ FSD는 파일과 책임을 나누는 구조 기준이고, 스타일 작성 방�
 - styled-components나 emotion을 추가하지 않는다.
 - 컴포넌트 하단의 `styles` 객체를 만들지 않는다.
 - JSX 요소의 `style={{ ... }}`에 스타일을 직접 작성한다.
-- 공통 디자인 토큰은 `shared/theme` 또는 `shared/config/theme.ts`에서 관리한다.
+- 공통 디자인 토큰은 `shared/theme/theme.ts`에서 관리한다.
 
 반복되는 스타일은 스타일 객체로 분리하지 않는다. 먼저 `shared/ui`의 공통 컴포넌트나 해당 레이어 내부 컴포넌트로 분리할 수 있는지 확인한다.
 
@@ -174,9 +174,9 @@ index.ts
 
 초기에는 파일을 과하게 나누지 않는다. 하나의 컴포넌트로 충분하면 `ui.tsx` 하나에서 시작하고, 상태나 API 호출이 커질 때 `model.ts`, `api.ts`로 분리한다.
 
-## theme.ts 기준
+## shared/theme/theme.ts 기준
 
-`theme.ts`는 공통 디자인 토큰만 관리한다.
+`shared/theme/theme.ts`는 공통 디자인 토큰만 관리한다.
 
 포함할 수 있는 값은 다음과 같다.
 
@@ -238,7 +238,7 @@ const [hovered, setHovered] = useState(false);
 - Badge
 - EmptyState
 
-공통 컴포넌트도 별도 CSS 파일을 만들지 않는다. 필요한 스타일은 JSX의 `style={{ ... }}`에 직접 작성하고, 공통 값은 `theme.ts`에서 가져온다.
+공통 컴포넌트도 별도 CSS 파일을 만들지 않는다. 필요한 스타일은 JSX의 `style={{ ... }}`에 직접 작성하고, 공통 값은 `shared/theme/theme.ts`에서 가져온다.
 
 ## 예외 기준
 
@@ -271,7 +271,7 @@ React inline style로 구현하기 어려운 요구가 생기면 먼저 요구 �
 
 - Tailwind, CSS 파일, CSS Modules, CSS-in-JS를 새로 추가하지 않는다.
 - 스타일은 JSX 요소의 `style={{ ... }}`에 직접 작성한다.
-- 공통 디자인 값은 `theme.ts`에서 가져온다.
+- 공통 디자인 값은 `shared/theme/theme.ts`에서 가져온다.
 - 반복되는 UI는 스타일 객체가 아니라 공통 컴포넌트로 정리한다.
 - 화면과 기능 배치는 FSD 레이어 책임을 기준으로 정리한다.
 - import 방향은 `app -> pages -> widgets -> features -> entities -> shared` 흐름을 지킨다.
