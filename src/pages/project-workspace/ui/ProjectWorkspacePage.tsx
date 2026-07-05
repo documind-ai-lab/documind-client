@@ -6,11 +6,12 @@ import { Text } from "@astryxdesign/core/Text";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useState } from "react";
 import { listDocuments } from "@/entities/document/api";
+import { DocumentSummary } from "@/entities/document/model";
 import { DocumentListItem } from "@/entities/document/ui/DocumentListItem";
 import { ProjectSummary, projectTypeLabels } from "@/entities/project/model";
+import { UploadDocumentDialog } from "@/features/document-upload/ui/UploadDocumentDialog";
 import { ApiError } from "@/shared/api/http";
 import { PageResponse } from "@/shared/api/page-response";
-import { DocumentSummary } from "@/entities/document/model";
 
 const styles = stylex.create({
   page: {
@@ -115,6 +116,7 @@ export function ProjectWorkspacePage({
   const [documentPage, setDocumentPage] = useState<PageResponse<DocumentSummary> | null>(null);
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
   const [documentsErrorMessage, setDocumentsErrorMessage] = useState<string | null>(null);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
   async function loadDocuments() {
     setIsDocumentsLoading(true);
@@ -134,6 +136,7 @@ export function ProjectWorkspacePage({
   }, [project.id]);
 
   const documents = documentPage?.items ?? [];
+  const documentCount = documentPage?.total ?? project.documentCount;
 
   return (
     <div {...stylex.props(styles.page)}>
@@ -181,7 +184,11 @@ export function ProjectWorkspacePage({
                 </div>
               ) : null}
 
-              <Button label="문서 업로드" variant="primary" isDisabled />
+              <Button
+                label="문서 업로드"
+                variant="primary"
+                onClick={() => setIsUploadDialogOpen(true)}
+              />
             </Card>
 
             <div {...stylex.props(styles.meta)}>
@@ -190,7 +197,7 @@ export function ProjectWorkspacePage({
                   문서 수
                 </Text>
                 <Text weight="medium" display="block">
-                  {project.documentCount}개
+                  {documentCount}개
                 </Text>
               </div>
               <div {...stylex.props(styles.metaItem)}>
@@ -264,6 +271,15 @@ export function ProjectWorkspacePage({
           </div>
         </aside>
       </div>
+
+      <UploadDocumentDialog
+        projectId={project.id}
+        isOpen={isUploadDialogOpen}
+        onOpenChange={setIsUploadDialogOpen}
+        onUploaded={() => {
+          void loadDocuments();
+        }}
+      />
     </div>
   );
 }
