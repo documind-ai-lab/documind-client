@@ -1,6 +1,6 @@
 import { apiGet, apiPost } from "@/shared/api/http";
 import { PageResponse } from "@/shared/api/page-response";
-import { ProjectListStatus, ProjectSummary, ProjectType } from "./model";
+import { ProjectDetail, ProjectListStatus, ProjectSummary, ProjectType } from "./model";
 
 export type ListProjectsParams = {
   page?: number;
@@ -16,6 +16,10 @@ export function listProjects(params: ListProjectsParams = {}): Promise<PageRespo
   search.set("status", params.status ?? "ACTIVE");
 
   return apiGet<PageResponse<ProjectSummary>>(`/projects?${search.toString()}`);
+}
+
+export function getProject(projectId: string): Promise<ProjectDetail> {
+  return apiGet<ProjectDetail>(`/projects/${encodeURIComponent(projectId)}`);
 }
 
 export type CreateProjectPayload = {

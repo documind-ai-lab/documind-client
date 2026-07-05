@@ -18,6 +18,11 @@ export type ProjectSummary = {
   lastActivityAt: string;
 };
 
+export type ProjectDetail = ProjectSummary & {
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ProjectListStatus = ProjectStatus | "ALL";
 
 export const projectTypeLabels: Record<ProjectType, string> = {
