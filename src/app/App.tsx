@@ -1,19 +1,38 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ProjectSummary } from "@/entities/project/model";
-import { ProjectWorkspacePage } from "@/pages/project-workspace/ui/ProjectWorkspacePage";
 import { ProjectsPage } from "@/pages/projects/ui/ProjectsPage";
+import { ProjectWorkspaceRoute } from "./ProjectWorkspaceRoute";
+import { getProjectIdFromPath, navigateToPath } from "./routing";
 
 export function App() {
-  const [selectedProject, setSelectedProject] = useState<ProjectSummary | null>(null);
+  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
+  const projectId = getProjectIdFromPath(currentPath);
 
-  if (selectedProject) {
+  useEffect(() => {
+    function handlePopState() {
+      setCurrentPath(window.location.pathname);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  function navigateToProjects() {
+    navigateToPath("/projects");
+  }
+
+  function navigateToProject(project: ProjectSummary) {
+    navigateToPath(`/projects/${project.id}`);
+  }
+
+  if (projectId) {
     return (
-      <ProjectWorkspacePage
-        project={selectedProject}
-        onBack={() => setSelectedProject(null)}
+      <ProjectWorkspaceRoute
+        projectId={projectId}
+        onBack={navigateToProjects}
       />
     );
   }
 
-  return <ProjectsPage onOpenProject={setSelectedProject} />;
+  return <ProjectsPage onOpenProject={navigateToProject} />;
 }
