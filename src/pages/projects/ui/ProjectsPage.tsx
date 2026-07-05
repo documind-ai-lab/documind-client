@@ -7,6 +7,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useEffect, useState } from "react";
 import { listProjects } from "@/entities/project/api";
 import { ProjectCard } from "@/entities/project/ui/ProjectCard";
+import { CreateProjectDialog } from "@/features/project-create/ui/CreateProjectDialog";
 import { ApiError } from "@/shared/api/http";
 import { PageResponse } from "@/shared/api/page-response";
 import { ProjectSummary } from "@/entities/project/model";
@@ -84,6 +85,7 @@ export function ProjectsPage() {
   const [projectPage, setProjectPage] = useState<PageResponse<ProjectSummary> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   async function loadProjects() {
     setIsLoading(true);
@@ -148,7 +150,11 @@ export function ProjectsPage() {
                 백엔드에 저장된 프로젝트를 불러와 문서 검토 작업의 시작점을 보여줍니다.
               </Text>
             </div>
-            <Button label="새 프로젝트" variant="primary" />
+            <Button
+              label="새 프로젝트"
+              variant="primary"
+              onClick={() => setIsCreateDialogOpen(true)}
+            />
           </div>
 
           <div {...stylex.props(styles.summaryGrid)}>
@@ -161,7 +167,9 @@ export function ProjectsPage() {
           {!isLoading && errorMessage ? (
             <ErrorState message={errorMessage} onRetry={loadProjects} />
           ) : null}
-          {!isLoading && !errorMessage && projects.length === 0 ? <EmptyState /> : null}
+          {!isLoading && !errorMessage && projects.length === 0 ? (
+            <EmptyState onCreate={() => setIsCreateDialogOpen(true)} />
+          ) : null}
           {!isLoading && !errorMessage && projects.length > 0 ? (
             <div {...stylex.props(styles.projectList)}>
               {projects.map((project) => (
@@ -176,6 +184,11 @@ export function ProjectsPage() {
           ) : null}
         </main>
       </div>
+      <CreateProjectDialog
+        isOpen={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onCreated={loadProjects}
+      />
     </div>
   );
 }
@@ -214,14 +227,14 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
-function EmptyState() {
+function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <Card padding={5} xstyle={[styles.stateCard, styles.stateStack]}>
       <Heading level={3}>아직 프로젝트가 없습니다</Heading>
       <Text type="supporting" display="block">
         새 프로젝트를 만들면 견적서, 제안서, 계약서 검토를 프로젝트별로 시작할 수 있습니다.
       </Text>
-      <Button label="새 프로젝트" variant="primary" />
+      <Button label="새 프로젝트" variant="primary" onClick={onCreate} />
     </Card>
   );
 }
