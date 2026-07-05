@@ -2,15 +2,18 @@ import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { Heading } from "@astryxdesign/core/Heading";
+import { SegmentedControl } from "@astryxdesign/core/SegmentedControl";
+import { SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { Text } from "@astryxdesign/core/Text";
+import { TextInput } from "@astryxdesign/core/TextInput";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useState } from "react";
 import { listProjects } from "@/entities/project/api";
+import { ProjectListStatus, ProjectSummary, projectTypeLabels } from "@/entities/project/model";
 import { ProjectCard } from "@/entities/project/ui/ProjectCard";
 import { CreateProjectDialog } from "@/features/project-create/ui/CreateProjectDialog";
 import { ApiError } from "@/shared/api/http";
 import { PageResponse } from "@/shared/api/page-response";
-import { ProjectSummary } from "@/entities/project/model";
 
 const styles = stylex.create({
   page: {
@@ -21,12 +24,19 @@ const styles = stylex.create({
   shell: {
     display: "grid",
     gridTemplateColumns: "280px minmax(0, 1fr)",
-    minHeight: "100vh"
+    minHeight: "100vh",
+    "@media (max-width: 900px)": {
+      gridTemplateColumns: "1fr"
+    }
   },
   sidebar: {
     borderRight: "1px solid #dde3ea",
     backgroundColor: "#ffffff",
-    padding: 24
+    padding: 24,
+    "@media (max-width: 900px)": {
+      borderRight: "none",
+      borderBottom: "1px solid #dde3ea"
+    }
   },
   sidebarStack: {
     display: "grid",
@@ -40,7 +50,10 @@ const styles = stylex.create({
     justifyContent: "space-between",
     gap: 16,
     alignItems: "flex-start",
-    marginBottom: 24
+    marginBottom: 24,
+    "@media (max-width: 720px)": {
+      flexDirection: "column"
+    }
   },
   headingStack: {
     display: "grid",
@@ -50,7 +63,10 @@ const styles = stylex.create({
     display: "grid",
     gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
     gap: 12,
-    marginBottom: 24
+    marginBottom: 18,
+    "@media (max-width: 720px)": {
+      gridTemplateColumns: "1fr"
+    }
   },
   summaryCard: {
     border: "1px solid #dde3ea",
@@ -59,6 +75,20 @@ const styles = stylex.create({
   projectList: {
     display: "grid",
     gap: 14
+  },
+  controls: {
+    display: "grid",
+    gridTemplateColumns: "minmax(260px, 1fr) minmax(260px, 360px)",
+    gap: 12,
+    alignItems: "end",
+    marginBottom: 24,
+    "@media (max-width: 820px)": {
+      gridTemplateColumns: "1fr"
+    }
+  },
+  filterBox: {
+    display: "grid",
+    gap: 6
   },
   stateCard: {
     border: "1px solid #dde3ea",
@@ -86,13 +116,15 @@ export function ProjectsPage({ onOpenProject }: { onOpenProject: (project: Proje
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ProjectListStatus>("ALL");
 
   async function loadProjects() {
     setIsLoading(true);
     setErrorMessage(null);
 
     try {
-      setProjectPage(await listProjects({ status: "ALL" }));
+      setProjectPage(await listProjects({ status: "ALL", size: 50 }));
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
     } finally {
@@ -105,9 +137,11 @@ export function ProjectsPage({ onOpenProject }: { onOpenProject: (project: Proje
   }, []);
 
   const projects = projectPage?.items ?? [];
+  const filteredProjects = filterProjects(projects, searchQuery, statusFilter);
   const activeCount = projects.filter((project) => project.status === "ACTIVE").length;
-  const archivedCount = projects.filter((project) => project.status === "ARCHIVED").length;
+  const visibleArchivedCount = filteredProjects.filter((project) => project.status === "ARCHIVED").length;
   const totalDocuments = projects.reduce((sum, project) => sum + project.documentCount, 0);
+  const hasFilter = searchQuery.trim().length > 0 || statusFilter !== "ALL";
 
   return (
     <div {...stylex.props(styles.page)}>
@@ -135,7 +169,7 @@ export function ProjectsPage({ onOpenProject }: { onOpenProject: (project: Proje
                 최근 활동
               </Text>
               <Text type="supporting" display="block">
-                다음 단계에서 연결 예정
+                목록에서 마지막 활동일을 확인하세요.
               </Text>
             </div>
           </div>
@@ -163,6 +197,38 @@ export function ProjectsPage({ onOpenProject }: { onOpenProject: (project: Proje
             <SummaryCard label="연결 문서" value={`${totalDocuments}개`} />
           </div>
 
+          {!isLoading && !errorMessage && projects.length > 0 ? (
+            <div {...stylex.props(styles.controls)}>
+              <TextInput
+                label="프로젝트 검색"
+                value={searchQuery}
+                placeholder="프로젝트명, 설명, 유형으로 검색"
+                hasClear
+                onChange={setSearchQuery}
+              />
+
+              <div {...stylex.props(styles.filterBox)}>
+                <Text type="supporting" weight="medium" display="block">
+                  상태 필터
+                </Text>
+                <SegmentedControl
+                  value={statusFilter}
+                  label="프로젝트 상태 필터"
+                  layout="fill"
+                  onChange={(nextStatus) => setStatusFilter(nextStatus as ProjectListStatus)}
+                >
+                  {statusFilterOptions.map((option) => (
+                    <SegmentedControlItem
+                      key={option.value}
+                      value={option.value}
+                      label={option.label}
+                    />
+                  ))}
+                </SegmentedControl>
+              </div>
+            </div>
+          ) : null}
+
           {isLoading ? <LoadingState /> : null}
           {!isLoading && errorMessage ? (
             <ErrorState message={errorMessage} onRetry={loadProjects} />
@@ -170,14 +236,23 @@ export function ProjectsPage({ onOpenProject }: { onOpenProject: (project: Proje
           {!isLoading && !errorMessage && projects.length === 0 ? (
             <EmptyState onCreate={() => setIsCreateDialogOpen(true)} />
           ) : null}
-          {!isLoading && !errorMessage && projects.length > 0 ? (
+          {!isLoading && !errorMessage && projects.length > 0 && filteredProjects.length === 0 ? (
+            <NoSearchResultState
+              hasFilter={hasFilter}
+              onReset={() => {
+                setSearchQuery("");
+                setStatusFilter("ALL");
+              }}
+            />
+          ) : null}
+          {!isLoading && !errorMessage && filteredProjects.length > 0 ? (
             <div {...stylex.props(styles.projectList)}>
-              {projects.map((project) => (
+              {filteredProjects.map((project) => (
                 <ProjectCard key={project.id} project={project} onOpen={onOpenProject} />
               ))}
-              {archivedCount > 0 ? (
+              {visibleArchivedCount > 0 ? (
                 <Text type="supporting" display="block">
-                  보관된 프로젝트 {archivedCount}개가 포함되어 있습니다.
+                  보관된 프로젝트 {visibleArchivedCount}개가 포함되어 있습니다.
                 </Text>
               ) : null}
             </div>
@@ -192,6 +267,12 @@ export function ProjectsPage({ onOpenProject }: { onOpenProject: (project: Proje
     </div>
   );
 }
+
+const statusFilterOptions: Array<{ value: ProjectListStatus; label: string }> = [
+  { value: "ALL", label: "전체" },
+  { value: "ACTIVE", label: "진행 중" },
+  { value: "ARCHIVED", label: "보관됨" }
+];
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
@@ -237,6 +318,54 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       <Button label="새 프로젝트" variant="primary" onClick={onCreate} />
     </Card>
   );
+}
+
+function NoSearchResultState({
+  hasFilter,
+  onReset
+}: {
+  hasFilter: boolean;
+  onReset: () => void;
+}) {
+  return (
+    <Card padding={5} xstyle={[styles.stateCard, styles.stateStack]}>
+      <Heading level={3}>조건에 맞는 프로젝트가 없습니다</Heading>
+      <Text type="supporting" display="block">
+        검색어를 줄이거나 상태 필터를 변경해 다시 확인해주세요.
+      </Text>
+      {hasFilter ? (
+        <Button label="검색 조건 초기화" variant="secondary" onClick={onReset} />
+      ) : null}
+    </Card>
+  );
+}
+
+function filterProjects(
+  projects: ProjectSummary[],
+  searchQuery: string,
+  statusFilter: ProjectListStatus
+): ProjectSummary[] {
+  const normalizedQuery = normalizeSearchText(searchQuery);
+
+  return projects.filter((project) => {
+    if (statusFilter !== "ALL" && project.status !== statusFilter) {
+      return false;
+    }
+
+    if (!normalizedQuery) {
+      return true;
+    }
+
+    return normalizeSearchText([
+      project.name,
+      project.description ?? "",
+      projectTypeLabels[project.type]
+    ].join(" ")).includes(normalizedQuery);
+  });
+}
+
+function normalizeSearchText(value: string): string {
+  return value.trim().toLocaleLowerCase("ko-KR");
 }
 
 function toErrorMessage(error: unknown): string {

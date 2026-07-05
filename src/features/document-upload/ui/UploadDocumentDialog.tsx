@@ -115,7 +115,7 @@ export function UploadDocumentDialog({
           value={file}
           mode="dropzone"
           placeholder="파일을 선택하거나 여기에 끌어다 놓으세요."
-          description="현재 MVP는 한 번에 하나의 파일을 업로드합니다."
+          description="한 번에 하나의 파일을 업로드합니다."
           isRequired
           isDisabled={isSubmitting}
           isLoading={isSubmitting}
