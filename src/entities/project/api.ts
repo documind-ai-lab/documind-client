@@ -31,3 +31,17 @@ export type CreateProjectPayload = {
 export function createProject(payload: CreateProjectPayload): Promise<ProjectSummary> {
   return apiPost<ProjectSummary, CreateProjectPayload>("/projects", payload);
 }
+
+export function archiveProject(projectId: string): Promise<ProjectSummary> {
+  return apiPost<ProjectSummary, Record<string, never>>(
+    `/projects/${encodeURIComponent(projectId)}/archive`,
+    {}
+  );
+}
+
+export function restoreProject(projectId: string): Promise<ProjectSummary> {
+  return apiPost<ProjectSummary, Record<string, never>>(
+    `/projects/${encodeURIComponent(projectId)}/restore`,
+    {}
+  );
+}

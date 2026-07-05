@@ -42,17 +42,32 @@ const styles = stylex.create({
   footer: {
     display: "flex",
     justifyContent: "flex-end",
-    marginTop: 18
+    gap: 8,
+    marginTop: 18,
+    "@media (max-width: 560px)": {
+      flexDirection: "column"
+    }
   }
 });
 
 export function ProjectCard({
   project,
-  onOpen
+  isActionPending = false,
+  isActionDisabled = false,
+  onOpen,
+  onArchive,
+  onRestore
 }: {
   project: ProjectSummary;
+  isActionPending?: boolean;
+  isActionDisabled?: boolean;
   onOpen: (project: ProjectSummary) => void;
+  onArchive?: (project: ProjectSummary) => void;
+  onRestore?: (project: ProjectSummary) => void;
 }) {
+  const actionLabel = project.status === "ACTIVE" ? "보관" : "복원";
+  const actionHandler = project.status === "ACTIVE" ? onArchive : onRestore;
+
   return (
     <Card padding={4} xstyle={styles.card}>
       <div {...stylex.props(styles.header)}>
@@ -100,7 +115,21 @@ export function ProjectCard({
       </div>
 
       <div {...stylex.props(styles.footer)}>
-        <Button label="워크스페이스 열기" variant="secondary" onClick={() => onOpen(project)} />
+        {actionHandler ? (
+          <Button
+            label={actionLabel}
+            variant="secondary"
+            isDisabled={isActionPending || isActionDisabled}
+            isLoading={isActionPending}
+            onClick={() => actionHandler(project)}
+          />
+        ) : null}
+        <Button
+          label="워크스페이스 열기"
+          variant="secondary"
+          isDisabled={isActionPending}
+          onClick={() => onOpen(project)}
+        />
       </div>
     </Card>
   );
