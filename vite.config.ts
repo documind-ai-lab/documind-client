@@ -14,6 +14,15 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ["@astryxdesign/core"]
   },
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, "")
+      }
+    }
+  },
   resolve: {
     conditions: ["source"],
     alias: {

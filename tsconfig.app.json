@@ -11,6 +11,9 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "skipLibCheck": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
