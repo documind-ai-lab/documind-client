@@ -4,7 +4,13 @@ import { Card } from "@astryxdesign/core/Card";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Text } from "@astryxdesign/core/Text";
 import * as stylex from "@stylexjs/stylex";
+import { useEffect, useState } from "react";
+import { listDocuments } from "@/entities/document/api";
+import { DocumentListItem } from "@/entities/document/ui/DocumentListItem";
 import { ProjectSummary, projectTypeLabels } from "@/entities/project/model";
+import { ApiError } from "@/shared/api/http";
+import { PageResponse } from "@/shared/api/page-response";
+import { DocumentSummary } from "@/entities/document/model";
 
 const styles = stylex.create({
   page: {
@@ -78,6 +84,10 @@ const styles = stylex.create({
     padding: 12,
     backgroundColor: "#f8fafc"
   },
+  documentList: {
+    display: "grid",
+    gap: 10
+  },
   chatSurface: {
     minHeight: 460
   },
@@ -102,6 +112,29 @@ export function ProjectWorkspacePage({
   project: ProjectSummary;
   onBack: () => void;
 }) {
+  const [documentPage, setDocumentPage] = useState<PageResponse<DocumentSummary> | null>(null);
+  const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
+  const [documentsErrorMessage, setDocumentsErrorMessage] = useState<string | null>(null);
+
+  async function loadDocuments() {
+    setIsDocumentsLoading(true);
+    setDocumentsErrorMessage(null);
+
+    try {
+      setDocumentPage(await listDocuments({ projectId: project.id }));
+    } catch (error) {
+      setDocumentsErrorMessage(toDocumentErrorMessage(error));
+    } finally {
+      setIsDocumentsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadDocuments();
+  }, [project.id]);
+
+  const documents = documentPage?.items ?? [];
+
   return (
     <div {...stylex.props(styles.page)}>
       <div {...stylex.props(styles.shell)}>
@@ -118,9 +151,36 @@ export function ProjectWorkspacePage({
 
             <Card padding={4} xstyle={[styles.panel, styles.emptyPanel]}>
               <Heading level={2}>문서</Heading>
-              <Text type="supporting" display="block">
-                업로드된 문서가 없습니다.
-              </Text>
+
+              {isDocumentsLoading ? (
+                <Text type="supporting" display="block">
+                  문서를 불러오는 중입니다.
+                </Text>
+              ) : null}
+
+              {!isDocumentsLoading && documentsErrorMessage ? (
+                <>
+                  <Text type="supporting" display="block">
+                    {documentsErrorMessage}
+                  </Text>
+                  <Button label="다시 시도" variant="secondary" onClick={loadDocuments} />
+                </>
+              ) : null}
+
+              {!isDocumentsLoading && !documentsErrorMessage && documents.length === 0 ? (
+                <Text type="supporting" display="block">
+                  업로드된 문서가 없습니다.
+                </Text>
+              ) : null}
+
+              {!isDocumentsLoading && !documentsErrorMessage && documents.length > 0 ? (
+                <div {...stylex.props(styles.documentList)}>
+                  {documents.map((document) => (
+                    <DocumentListItem key={document.id} document={document} />
+                  ))}
+                </div>
+              ) : null}
+
               <Button label="문서 업로드" variant="primary" isDisabled />
             </Card>
 
@@ -206,4 +266,24 @@ export function ProjectWorkspacePage({
       </div>
     </div>
   );
+}
+
+function toDocumentErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 422) {
+      return "owner 설정 또는 요청값을 확인해주세요.";
+    }
+
+    if (error.status === 404) {
+      return "프로젝트를 찾을 수 없습니다.";
+    }
+
+    return `서버가 ${error.status} 응답을 반환했습니다.`;
+  }
+
+  if (error instanceof TypeError) {
+    return "백엔드 서버에 연결할 수 없습니다.";
+  }
+
+  return "문서 목록을 불러오지 못했습니다.";
 }
