@@ -2,6 +2,8 @@ import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { Heading } from "@astryxdesign/core/Heading";
+import { SegmentedControl } from "@astryxdesign/core/SegmentedControl";
+import { SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { Text } from "@astryxdesign/core/Text";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import * as stylex from "@stylexjs/stylex";
@@ -133,18 +135,6 @@ const styles = stylex.create({
     backgroundColor: "#fff5f5",
     color: "#8a1f1f"
   },
-  sourceTabs: {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 8
-  },
-  sourceTab: {
-    border: "1px solid #dde3ea",
-    borderRadius: 8,
-    padding: "8px 10px",
-    backgroundColor: "#f8fafc",
-    textAlign: "center"
-  },
   sourceList: {
     display: "grid",
     gap: 12
@@ -174,6 +164,7 @@ export function ProjectWorkspacePage({
   const [chatErrorMessage, setChatErrorMessage] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
   const [isSendingQuestion, setIsSendingQuestion] = useState(false);
+  const [activeEvidenceTab, setActiveEvidenceTab] = useState<EvidenceTab>("sources");
 
   async function loadDocuments() {
     setIsDocumentsLoading(true);
@@ -442,43 +433,22 @@ export function ProjectWorkspacePage({
         <aside {...stylex.props(styles.aside)}>
           <div {...stylex.props(styles.stack)}>
             <Heading level={2}>출처와 근거</Heading>
-            <div {...stylex.props(styles.sourceTabs)}>
-              <div {...stylex.props(styles.sourceTab)}>
-                <Text weight="medium" display="block">
-                  출처
-                </Text>
-              </div>
-              <div {...stylex.props(styles.sourceTab)}>
-                <Text weight="medium" display="block">
-                  리스크
-                </Text>
-              </div>
-              <div {...stylex.props(styles.sourceTab)}>
-                <Text weight="medium" display="block">
-                  사실
-                </Text>
-              </div>
-              <div {...stylex.props(styles.sourceTab)}>
-                <Text weight="medium" display="block">
-                  요약
-                </Text>
-              </div>
-            </div>
+            <SegmentedControl
+              value={activeEvidenceTab}
+              onChange={(nextTab) => setActiveEvidenceTab(nextTab as EvidenceTab)}
+              label="출처와 근거 보기"
+              layout="fill"
+              size="sm"
+            >
+              {evidenceTabs.map((tab) => (
+                <SegmentedControlItem key={tab.value} value={tab.value} label={tab.label} />
+              ))}
+            </SegmentedControl>
 
-            {latestAssistantSources.length > 0 ? (
-              <div {...stylex.props(styles.sourceList)}>
-                {latestAssistantSources.map((source) => (
-                  <SourceCard key={source.id} source={source} />
-                ))}
-              </div>
-            ) : (
-              <Card padding={4} xstyle={[styles.panel, styles.emptyPanel]}>
-                <Heading level={3}>근거 없음</Heading>
-                <Text type="supporting" display="block">
-                  AI 답변이 생성되면 문서명, 페이지, 인용 문구가 표시됩니다.
-                </Text>
-              </Card>
-            )}
+            <EvidencePanelContent
+              activeTab={activeEvidenceTab}
+              sources={latestAssistantSources}
+            />
           </div>
         </aside>
       </div>
@@ -499,6 +469,15 @@ type SuggestedQuestion = {
   label: string;
   prompt: string;
 };
+
+type EvidenceTab = "sources" | "risks" | "facts" | "summary";
+
+const evidenceTabs: Array<{ value: EvidenceTab; label: string }> = [
+  { value: "sources", label: "출처" },
+  { value: "risks", label: "리스크" },
+  { value: "facts", label: "사실" },
+  { value: "summary", label: "요약" }
+];
 
 const suggestedQuestionsByProjectType: Record<ProjectSummary["type"], SuggestedQuestion[]> = {
   ESTIMATE_REVIEW: [
@@ -584,6 +563,75 @@ function SourceCard({ source }: { source: ChatSource }) {
       </Text>
       <Text type="supporting" display="block" xstyle={styles.sourceMeta}>
         관련도 {source.relevance ?? "미산정"}
+      </Text>
+    </Card>
+  );
+}
+
+function EvidencePanelContent({
+  activeTab,
+  sources
+}: {
+  activeTab: EvidenceTab;
+  sources: ChatSource[];
+}) {
+  if (activeTab === "sources") {
+    if (sources.length === 0) {
+      return (
+        <EvidenceEmptyState
+          title="근거 없음"
+          description="AI 답변이 생성되면 문서명, 페이지, 인용 문구가 표시됩니다."
+        />
+      );
+    }
+
+    return (
+      <div {...stylex.props(styles.sourceList)}>
+        {sources.map((source) => (
+          <SourceCard key={source.id} source={source} />
+        ))}
+      </div>
+    );
+  }
+
+  if (activeTab === "risks") {
+    return (
+      <EvidenceEmptyState
+        title="리스크 후보 없음"
+        description="아직 분리된 리스크 후보가 없습니다. AI 답변 본문과 출처를 함께 검토해주세요."
+      />
+    );
+  }
+
+  if (activeTab === "facts") {
+    return (
+      <EvidenceEmptyState
+        title="핵심 사실 없음"
+        description="아직 분리된 핵심 사실이 없습니다. 출처 탭의 인용 문구를 기준으로 확인해주세요."
+      />
+    );
+  }
+
+  return (
+    <EvidenceEmptyState
+      title="요약 없음"
+      description="아직 표시할 요약 정보가 없습니다."
+    />
+  );
+}
+
+function EvidenceEmptyState({
+  title,
+  description
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <Card padding={4} xstyle={[styles.panel, styles.emptyPanel]}>
+      <Heading level={3}>{title}</Heading>
+      <Text type="supporting" display="block">
+        {description}
       </Text>
     </Card>
   );
