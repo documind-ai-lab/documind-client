@@ -113,6 +113,19 @@ const styles = stylex.create({
     justifyContent: "flex-end",
     gap: 8
   },
+  suggestedQuestions: {
+    display: "grid",
+    gap: 10,
+    padding: 14,
+    border: "1px solid #dde3ea",
+    borderRadius: 8,
+    backgroundColor: "#f8fafc"
+  },
+  suggestedQuestionList: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 8
+  },
   errorBox: {
     border: "1px solid #f3b4b4",
     borderRadius: 8,
@@ -250,6 +263,9 @@ export function ProjectWorkspacePage({
   const isQuestionInvalid = trimmedQuestion.length > 4000;
   const canSendQuestion =
     trimmedQuestion.length > 0 && !isQuestionInvalid && !isSendingQuestion && !isChatLoading;
+  const suggestedQuestions =
+    suggestedQuestionsByProjectType[project.type] ??
+    suggestedQuestionsByProjectType.GENERAL_DOCUMENT_ANALYSIS;
 
   return (
     <div {...stylex.props(styles.page)}>
@@ -363,6 +379,23 @@ export function ProjectWorkspacePage({
               </Text>
             ) : null}
 
+            <div {...stylex.props(styles.suggestedQuestions)}>
+              <Text weight="medium" display="block">
+                추천 질문
+              </Text>
+              <div {...stylex.props(styles.suggestedQuestionList)}>
+                {suggestedQuestions.map((suggestedQuestion) => (
+                  <Button
+                    key={suggestedQuestion.label}
+                    label={suggestedQuestion.label}
+                    variant="secondary"
+                    isDisabled={isSendingQuestion}
+                    onClick={() => setQuestion(suggestedQuestion.prompt)}
+                  />
+                ))}
+              </div>
+            </div>
+
             {chatMessages.length > 0 ? (
               <div {...stylex.props(styles.chatList)}>
                 {chatMessages.map((message) => (
@@ -461,6 +494,84 @@ export function ProjectWorkspacePage({
     </div>
   );
 }
+
+type SuggestedQuestion = {
+  label: string;
+  prompt: string;
+};
+
+const suggestedQuestionsByProjectType: Record<ProjectSummary["type"], SuggestedQuestion[]> = {
+  ESTIMATE_REVIEW: [
+    {
+      label: "총액·품목 요약",
+      prompt: "견적서의 총액, 품목, 누락 항목을 요약해줘"
+    },
+    {
+      label: "제안서 불일치 확인",
+      prompt: "제안서 내용과 견적서가 불일치하는 부분을 찾아줘"
+    },
+    {
+      label: "금액·일정 리스크",
+      prompt: "금액이나 일정 측면의 리스크 후보를 알려줘"
+    }
+  ],
+  PROPOSAL_REVIEW: [
+    {
+      label: "범위·산출물 요약",
+      prompt: "제안서의 핵심 범위와 산출물을 요약해줘"
+    },
+    {
+      label: "법령 검토 항목",
+      prompt: "법령이나 규정 검토가 필요한 항목을 뽑아줘"
+    },
+    {
+      label: "계약 전 리스크",
+      prompt: "계약 전에 확인해야 할 리스크 후보를 알려줘"
+    }
+  ],
+  CONTRACT_REVIEW: [
+    {
+      label: "불리한 조항 확인",
+      prompt: "계약서에서 불리하거나 모호한 조항을 찾아줘"
+    },
+    {
+      label: "대금·납기·해지",
+      prompt: "대금, 납기, 해지 조건을 중심으로 요약해줘"
+    },
+    {
+      label: "추가 협의 조항",
+      prompt: "추가 협의가 필요한 조항 후보를 알려줘"
+    }
+  ],
+  MEETING_NOTE_SUMMARY: [
+    {
+      label: "결정사항·담당자",
+      prompt: "회의록의 결정사항과 담당자를 정리해줘"
+    },
+    {
+      label: "후속 작업 정리",
+      prompt: "후속 작업과 마감일 후보를 뽑아줘"
+    },
+    {
+      label: "연결 쟁점 확인",
+      prompt: "이전 문서와 연결되는 쟁점을 찾아줘"
+    }
+  ],
+  GENERAL_DOCUMENT_ANALYSIS: [
+    {
+      label: "핵심 내용 요약",
+      prompt: "문서의 핵심 내용을 요약해줘"
+    },
+    {
+      label: "리스크 후보",
+      prompt: "검토가 필요한 리스크 후보를 알려줘"
+    },
+    {
+      label: "추가 질문 목록",
+      prompt: "추가로 확인해야 할 질문 목록을 만들어줘"
+    }
+  ]
+};
 
 function SourceCard({ source }: { source: ChatSource }) {
   return (
