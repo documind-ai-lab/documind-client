@@ -8,7 +8,7 @@ import { Text } from "@astryxdesign/core/Text";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useState } from "react";
-import { listProjects } from "@/entities/project/api";
+import { archiveProject, listProjects, restoreProject } from "@/entities/project/api";
 import { ProjectListStatus, ProjectSummary, projectTypeLabels } from "@/entities/project/model";
 import { ProjectCard } from "@/entities/project/ui/ProjectCard";
 import { CreateProjectDialog } from "@/features/project-create/ui/CreateProjectDialog";
@@ -115,6 +115,8 @@ export function ProjectsPage({ onOpenProject }: { onOpenProject: (project: Proje
   const [projectPage, setProjectPage] = useState<PageResponse<ProjectSummary> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
+  const [mutatingProjectId, setMutatingProjectId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProjectListStatus>("ALL");
@@ -122,6 +124,7 @@ export function ProjectsPage({ onOpenProject }: { onOpenProject: (project: Proje
   async function loadProjects() {
     setIsLoading(true);
     setErrorMessage(null);
+    setActionErrorMessage(null);
 
     try {
       setProjectPage(await listProjects({ status: "ALL", size: 50 }));
@@ -135,6 +138,46 @@ export function ProjectsPage({ onOpenProject }: { onOpenProject: (project: Proje
   useEffect(() => {
     void loadProjects();
   }, []);
+
+  async function handleArchiveProject(project: ProjectSummary) {
+    await runProjectStatusAction(project, archiveProject);
+  }
+
+  async function handleRestoreProject(project: ProjectSummary) {
+    await runProjectStatusAction(project, restoreProject);
+  }
+
+  async function runProjectStatusAction(
+    project: ProjectSummary,
+    action: (projectId: string) => Promise<ProjectSummary>
+  ) {
+    if (mutatingProjectId) {
+      return;
+    }
+
+    setMutatingProjectId(project.id);
+    setActionErrorMessage(null);
+
+    try {
+      const updatedProject = await action(project.id);
+      setProjectPage((currentPage) => {
+        if (!currentPage) {
+          return currentPage;
+        }
+
+        return {
+          ...currentPage,
+          items: currentPage.items.map((item) =>
+            item.id === updatedProject.id ? updatedProject : item
+          )
+        };
+      });
+    } catch (error) {
+      setActionErrorMessage(toProjectActionErrorMessage(error, project.status));
+    } finally {
+      setMutatingProjectId(null);
+    }
+  }
 
   const projects = projectPage?.items ?? [];
   const filteredProjects = filterProjects(projects, searchQuery, statusFilter);
@@ -233,6 +276,9 @@ export function ProjectsPage({ onOpenProject }: { onOpenProject: (project: Proje
           {!isLoading && errorMessage ? (
             <ErrorState message={errorMessage} onRetry={loadProjects} />
           ) : null}
+          {!isLoading && !errorMessage && actionErrorMessage ? (
+            <ActionErrorState message={actionErrorMessage} />
+          ) : null}
           {!isLoading && !errorMessage && projects.length === 0 ? (
             <EmptyState onCreate={() => setIsCreateDialogOpen(true)} />
           ) : null}
@@ -248,7 +294,15 @@ export function ProjectsPage({ onOpenProject }: { onOpenProject: (project: Proje
           {!isLoading && !errorMessage && filteredProjects.length > 0 ? (
             <div {...stylex.props(styles.projectList)}>
               {filteredProjects.map((project) => (
-                <ProjectCard key={project.id} project={project} onOpen={onOpenProject} />
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  isActionPending={mutatingProjectId === project.id}
+                  isActionDisabled={Boolean(mutatingProjectId)}
+                  onOpen={onOpenProject}
+                  onArchive={handleArchiveProject}
+                  onRestore={handleRestoreProject}
+                />
               ))}
               {visibleArchivedCount > 0 ? (
                 <Text type="supporting" display="block">
@@ -304,6 +358,17 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
         {message}
       </Text>
       <Button label="다시 시도" variant="secondary" onClick={onRetry} />
+    </Card>
+  );
+}
+
+function ActionErrorState({ message }: { message: string }) {
+  return (
+    <Card padding={4} xstyle={[styles.stateCard, styles.stateStack]}>
+      <Heading level={3}>프로젝트 상태를 변경하지 못했습니다</Heading>
+      <Text type="supporting" display="block">
+        {message}
+      </Text>
     </Card>
   );
 }
@@ -378,4 +443,26 @@ function toErrorMessage(error: unknown): string {
   }
 
   return "알 수 없는 오류가 발생했습니다.";
+}
+
+function toProjectActionErrorMessage(error: unknown, previousStatus: ProjectSummary["status"]): string {
+  const actionName = previousStatus === "ACTIVE" ? "보관" : "복원";
+
+  if (error instanceof ApiError) {
+    if (error.status === 404) {
+      return "프로젝트를 찾을 수 없습니다.";
+    }
+
+    if (error.status === 409) {
+      return `현재 프로젝트 상태에서는 ${actionName}할 수 없습니다. 목록을 다시 불러와 확인해주세요.`;
+    }
+
+    return `서버가 ${error.status} 응답을 반환했습니다.`;
+  }
+
+  if (error instanceof TypeError) {
+    return "백엔드 서버에 연결할 수 없습니다. API 서버 실행 상태를 확인해주세요.";
+  }
+
+  return `프로젝트를 ${actionName}하지 못했습니다.`;
 }
