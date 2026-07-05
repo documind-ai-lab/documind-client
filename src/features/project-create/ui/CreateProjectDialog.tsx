@@ -8,7 +8,7 @@ import { TextInput } from "@astryxdesign/core/TextInput";
 import * as stylex from "@stylexjs/stylex";
 import { FormEvent, useState } from "react";
 import { createProject } from "@/entities/project/api";
-import { ProjectType } from "@/entities/project/model";
+import { ProjectSummary, ProjectType } from "@/entities/project/model";
 import { ApiError } from "@/shared/api/http";
 
 const styles = stylex.create({
@@ -52,7 +52,7 @@ export function CreateProjectDialog({
 }: {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onCreated: () => void;
+  onCreated: (project: ProjectSummary) => void;
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -78,14 +78,14 @@ export function CreateProjectDialog({
     setErrorMessage(null);
 
     try {
-      await createProject({
+      const project = await createProject({
         name: trimmedName,
         description: trimmedDescription.length > 0 ? trimmedDescription : null,
         type
       });
       resetForm();
       onOpenChange(false);
-      onCreated();
+      onCreated(project);
     } catch (error) {
       setErrorMessage(toCreateProjectErrorMessage(error));
     } finally {

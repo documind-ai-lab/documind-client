@@ -81,7 +81,7 @@ const styles = stylex.create({
   }
 });
 
-export function ProjectsPage() {
+export function ProjectsPage({ onOpenProject }: { onOpenProject: (project: ProjectSummary) => void }) {
   const [projectPage, setProjectPage] = useState<PageResponse<ProjectSummary> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -173,7 +173,7 @@ export function ProjectsPage() {
           {!isLoading && !errorMessage && projects.length > 0 ? (
             <div {...stylex.props(styles.projectList)}>
               {projects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
+                <ProjectCard key={project.id} project={project} onOpen={onOpenProject} />
               ))}
               {archivedCount > 0 ? (
                 <Text type="supporting" display="block">
@@ -187,7 +187,7 @@ export function ProjectsPage() {
       <CreateProjectDialog
         isOpen={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
-        onCreated={loadProjects}
+        onCreated={onOpenProject}
       />
     </div>
   );

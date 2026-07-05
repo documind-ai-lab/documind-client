@@ -1,9 +1,10 @@
 import { Badge } from "@astryxdesign/core/Badge";
+import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Text } from "@astryxdesign/core/Text";
 import * as stylex from "@stylexjs/stylex";
-import { ProjectSummary, ProjectType } from "../model";
+import { ProjectSummary, projectTypeLabels } from "../model";
 
 const styles = stylex.create({
   card: {
@@ -37,18 +38,21 @@ const styles = stylex.create({
     borderRadius: 8,
     padding: "8px 10px",
     backgroundColor: "#f8fafc"
+  },
+  footer: {
+    display: "flex",
+    justifyContent: "flex-end",
+    marginTop: 18
   }
 });
 
-const projectTypeLabels: Record<ProjectType, string> = {
-  ESTIMATE_REVIEW: "견적 검토",
-  PROPOSAL_REVIEW: "제안 검토",
-  CONTRACT_REVIEW: "계약 검토",
-  MEETING_NOTE_SUMMARY: "회의록 정리",
-  GENERAL_DOCUMENT_ANALYSIS: "일반 문서 분석"
-};
-
-export function ProjectCard({ project }: { project: ProjectSummary }) {
+export function ProjectCard({
+  project,
+  onOpen
+}: {
+  project: ProjectSummary;
+  onOpen: (project: ProjectSummary) => void;
+}) {
   return (
     <Card padding={4} xstyle={styles.card}>
       <div {...stylex.props(styles.header)}>
@@ -93,6 +97,10 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
             {formatDate(project.lastActivityAt)}
           </Text>
         </div>
+      </div>
+
+      <div {...stylex.props(styles.footer)}>
+        <Button label="워크스페이스 열기" variant="secondary" onClick={() => onOpen(project)} />
       </div>
     </Card>
   );
