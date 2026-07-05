@@ -12,6 +12,7 @@ import { archiveProject, listProjects, restoreProject } from "@/entities/project
 import { ProjectListStatus, ProjectSummary, projectTypeLabels } from "@/entities/project/model";
 import { ProjectCard } from "@/entities/project/ui/ProjectCard";
 import { CreateProjectDialog } from "@/features/project-create/ui/CreateProjectDialog";
+import { UpdateProjectDialog } from "@/features/project-update/ui/UpdateProjectDialog";
 import { ApiError } from "@/shared/api/http";
 import { PageResponse } from "@/shared/api/page-response";
 
@@ -118,6 +119,7 @@ export function ProjectsPage({ onOpenProject }: { onOpenProject: (project: Proje
   const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
   const [mutatingProjectId, setMutatingProjectId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<ProjectSummary | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProjectListStatus>("ALL");
 
@@ -145,6 +147,22 @@ export function ProjectsPage({ onOpenProject }: { onOpenProject: (project: Proje
 
   async function handleRestoreProject(project: ProjectSummary) {
     await runProjectStatusAction(project, restoreProject);
+  }
+
+  function handleProjectUpdated(updatedProject: ProjectSummary) {
+    setProjectPage((currentPage) => {
+      if (!currentPage) {
+        return currentPage;
+      }
+
+      return {
+        ...currentPage,
+        items: currentPage.items.map((item) =>
+          item.id === updatedProject.id ? updatedProject : item
+        )
+      };
+    });
+    setEditingProject(null);
   }
 
   async function runProjectStatusAction(
@@ -300,6 +318,7 @@ export function ProjectsPage({ onOpenProject }: { onOpenProject: (project: Proje
                   isActionPending={mutatingProjectId === project.id}
                   isActionDisabled={Boolean(mutatingProjectId)}
                   onOpen={onOpenProject}
+                  onEdit={setEditingProject}
                   onArchive={handleArchiveProject}
                   onRestore={handleRestoreProject}
                 />
@@ -317,6 +336,16 @@ export function ProjectsPage({ onOpenProject }: { onOpenProject: (project: Proje
         isOpen={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         onCreated={onOpenProject}
+      />
+      <UpdateProjectDialog
+        project={editingProject}
+        isOpen={Boolean(editingProject)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setEditingProject(null);
+          }
+        }}
+        onUpdated={handleProjectUpdated}
       />
     </div>
   );
