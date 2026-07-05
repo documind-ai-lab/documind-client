@@ -92,6 +92,8 @@ import "@astryxdesign/theme-neutral/theme.css";
 
 테마 CSS는 전역 디자인 기준을 제공한다. 개별 화면에서 직접 CSS 파일을 추가하지 않는다.
 
+Vite 앱에서는 `src/app/global.css`처럼 Astryx theme import만 담는 진입점 CSS 파일을 둘 수 있다. 이 파일에는 직접 작성한 class, selector, component style을 추가하지 않는다.
+
 ## FSD 구조 기준
 
 클라이언트의 화면과 기능 배치는 FSD를 기준으로 한다.
@@ -263,6 +265,7 @@ Astryx 또는 StyleX로 구현하기 어려운 요구가 생기면 먼저 요구
 - Astryx theme CSS는 앱 진입점에서만 import한다.
 - Tailwind, CSS Modules, styled-components, emotion을 추가하지 않는다.
 - 직접 작성하는 일반 CSS 파일을 추가하지 않는다.
+- Astryx theme import 전용 CSS 파일에는 직접 작성한 selector를 추가하지 않는다.
 - 도메인 의미가 있는 UI는 DocuMind 이름의 조합 컴포넌트로 관리한다.
 - import 방향은 `app -> pages -> widgets -> features -> entities -> shared` 흐름을 지킨다.
 - 예외가 필요하면 새 이슈로 분리해 결정한다.
