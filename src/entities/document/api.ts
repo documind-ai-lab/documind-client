@@ -1,5 +1,5 @@
 import { DocumentSummary } from "./model";
-import { apiGetWithOwner } from "@/shared/api/http";
+import { apiGetWithOwner, apiPostFormWithOwner } from "@/shared/api/http";
 import { PageResponse } from "@/shared/api/page-response";
 
 export type ListDocumentsParams = {
@@ -18,5 +18,21 @@ export function listDocuments(
 
   return apiGetWithOwner<PageResponse<DocumentSummary>>(
     `/projects/${params.projectId}/documents?${search.toString()}`
+  );
+}
+
+export type UploadDocumentParams = {
+  projectId: string;
+  file: File;
+};
+
+export function uploadDocument(params: UploadDocumentParams): Promise<DocumentSummary> {
+  const body = new FormData();
+
+  body.append("file", params.file);
+
+  return apiPostFormWithOwner<DocumentSummary>(
+    `/projects/${params.projectId}/documents`,
+    body
   );
 }

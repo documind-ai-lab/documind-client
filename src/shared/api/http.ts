@@ -60,3 +60,23 @@ export async function apiPost<TResponse, TBody extends Record<string, unknown>>(
 
   return (await response.json()) as TResponse;
 }
+
+export async function apiPostFormWithOwner<TResponse>(
+  path: string,
+  body: FormData
+): Promise<TResponse> {
+  const response = await fetch(`${runtimeConfig.apiBaseUrl}${path}`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "X-Owner-Id": runtimeConfig.ownerId
+    },
+    body
+  });
+
+  if (!response.ok) {
+    throw new ApiError("API 요청에 실패했습니다.", response.status);
+  }
+
+  return (await response.json()) as TResponse;
+}
