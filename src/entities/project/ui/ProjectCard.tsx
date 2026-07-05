@@ -55,6 +55,7 @@ export function ProjectCard({
   isActionPending = false,
   isActionDisabled = false,
   onOpen,
+  onEdit,
   onArchive,
   onRestore
 }: {
@@ -62,6 +63,7 @@ export function ProjectCard({
   isActionPending?: boolean;
   isActionDisabled?: boolean;
   onOpen: (project: ProjectSummary) => void;
+  onEdit?: (project: ProjectSummary) => void;
   onArchive?: (project: ProjectSummary) => void;
   onRestore?: (project: ProjectSummary) => void;
 }) {
@@ -115,6 +117,14 @@ export function ProjectCard({
       </div>
 
       <div {...stylex.props(styles.footer)}>
+        {onEdit ? (
+          <Button
+            label="정보 수정"
+            variant="secondary"
+            isDisabled={isActionPending || isActionDisabled}
+            onClick={() => onEdit(project)}
+          />
+        ) : null}
         {actionHandler ? (
           <Button
             label={actionLabel}

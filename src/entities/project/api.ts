@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "@/shared/api/http";
+import { apiGet, apiPatch, apiPost } from "@/shared/api/http";
 import { PageResponse } from "@/shared/api/page-response";
 import { ProjectDetail, ProjectListStatus, ProjectSummary, ProjectType } from "./model";
 
@@ -30,6 +30,21 @@ export type CreateProjectPayload = {
 
 export function createProject(payload: CreateProjectPayload): Promise<ProjectSummary> {
   return apiPost<ProjectSummary, CreateProjectPayload>("/projects", payload);
+}
+
+export type UpdateProjectPayload = {
+  name?: string;
+  description?: string | null;
+};
+
+export function updateProject(
+  projectId: string,
+  payload: UpdateProjectPayload
+): Promise<ProjectSummary> {
+  return apiPatch<ProjectSummary, UpdateProjectPayload>(
+    `/projects/${encodeURIComponent(projectId)}`,
+    payload
+  );
 }
 
 export function archiveProject(projectId: string): Promise<ProjectSummary> {

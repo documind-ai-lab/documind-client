@@ -61,6 +61,26 @@ export async function apiPost<TResponse, TBody extends Record<string, unknown>>(
   return (await response.json()) as TResponse;
 }
 
+export async function apiPatch<TResponse, TBody extends Record<string, unknown>>(
+  path: string,
+  body: TBody
+): Promise<TResponse> {
+  const response = await fetch(`${runtimeConfig.apiBaseUrl}${path}`, {
+    method: "PATCH",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    throw new ApiError("API 요청에 실패했습니다.", response.status);
+  }
+
+  return (await response.json()) as TResponse;
+}
+
 export async function apiPostWithOwner<TResponse, TBody extends Record<string, unknown>>(
   path: string,
   body: TBody
