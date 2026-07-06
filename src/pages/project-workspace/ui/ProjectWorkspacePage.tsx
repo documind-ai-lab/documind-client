@@ -11,6 +11,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createChatMessage, listChatMessages } from "@/entities/chat/api";
 import { ChatMessage, ChatSource } from "@/entities/chat/model";
 import { ChatMessageItem } from "@/entities/chat/ui/ChatMessageItem";
+import { ChatPendingMessageItem } from "@/entities/chat/ui/ChatPendingMessageItem";
 import { listDocuments, retryDocument } from "@/entities/document/api";
 import { DocumentSummary } from "@/entities/document/model";
 import { DocumentListItem } from "@/entities/document/ui/DocumentListItem";
@@ -323,7 +324,7 @@ export function ProjectWorkspacePage({
   }, [hasProcessingDocuments, documentsErrorMessage, project.id]);
 
   useEffect(() => {
-    if (!latestChatMessageId) {
+    if (!latestChatMessageId && !isSendingQuestion) {
       return;
     }
 
@@ -331,7 +332,7 @@ export function ProjectWorkspacePage({
       behavior: "smooth",
       block: "end"
     });
-  }, [latestChatMessageId]);
+  }, [latestChatMessageId, isSendingQuestion]);
 
   return (
     <div {...stylex.props(styles.page)}>
@@ -453,7 +454,7 @@ export function ProjectWorkspacePage({
               </div>
             ) : null}
 
-            {!isChatLoading && chatMessages.length === 0 ? (
+            {!isChatLoading && !isSendingQuestion && chatMessages.length === 0 ? (
               <Text type="supporting" display="block">
                 아직 대화가 없습니다. 문서를 업로드한 뒤 검토할 내용을 질문하세요.
               </Text>
@@ -476,11 +477,12 @@ export function ProjectWorkspacePage({
               </div>
             </div>
 
-            {chatMessages.length > 0 ? (
+            {chatMessages.length > 0 || isSendingQuestion ? (
               <div {...stylex.props(styles.chatList)}>
                 {chatMessages.map((message) => (
                   <ChatMessageItem key={message.id} message={message} />
                 ))}
+                {isSendingQuestion ? <ChatPendingMessageItem /> : null}
                 <div ref={latestChatMessageRef} />
               </div>
             ) : null}
