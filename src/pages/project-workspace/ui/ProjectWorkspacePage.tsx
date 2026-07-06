@@ -817,11 +817,15 @@ function toChatErrorMessage(error: unknown): string {
       return "진행 중인 프로젝트에서만 질문할 수 있습니다.";
     }
 
+    if (error.status === 502 || error.status === 503 || error.status === 504) {
+      return "AI 응답 서버에 연결하지 못했습니다. 백엔드 서버와 로컬 Ollama 실행 상태를 확인해주세요.";
+    }
+
     return `서버가 ${error.status} 응답을 반환했습니다.`;
   }
 
   if (error instanceof TypeError) {
-    return "백엔드 서버에 연결할 수 없습니다.";
+    return "백엔드 서버에 연결할 수 없습니다. API 서버 실행 상태를 확인해주세요.";
   }
 
   return "대화 요청을 처리하지 못했습니다.";
