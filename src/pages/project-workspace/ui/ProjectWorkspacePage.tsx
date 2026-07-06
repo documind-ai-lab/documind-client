@@ -19,6 +19,8 @@ import { UploadDocumentDialog } from "@/features/document-upload/ui/UploadDocume
 import { ApiError } from "@/shared/api/http";
 import { PageResponse } from "@/shared/api/page-response";
 
+const DOCUMENT_STATUS_REFRESH_INTERVAL_MS = 5000;
+
 const styles = stylex.create({
   page: {
     minHeight: "100vh",
@@ -182,6 +184,15 @@ export function ProjectWorkspacePage({
     }
   }
 
+  async function refreshDocumentsSilently() {
+    try {
+      setDocumentPage(await listDocuments({ projectId: project.id }));
+      setDocumentActionErrorMessage(null);
+    } catch (error) {
+      setDocumentActionErrorMessage(toDocumentRefreshErrorMessage(error));
+    }
+  }
+
   useEffect(() => {
     void loadDocuments();
   }, [project.id]);
@@ -276,6 +287,7 @@ export function ProjectWorkspacePage({
   }
 
   const documents = documentPage?.items ?? [];
+  const hasProcessingDocuments = documents.some(isProcessingDocument);
   const documentCount = documentPage?.total ?? project.documentCount;
   const chatMessages = chatPage?.items ?? [];
   const latestAssistantSources = useMemo(
@@ -293,6 +305,20 @@ export function ProjectWorkspacePage({
   const suggestedQuestions =
     suggestedQuestionsByProjectType[project.type] ??
     suggestedQuestionsByProjectType.GENERAL_DOCUMENT_ANALYSIS;
+
+  useEffect(() => {
+    if (!hasProcessingDocuments || documentsErrorMessage) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshDocumentsSilently();
+    }, DOCUMENT_STATUS_REFRESH_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [hasProcessingDocuments, documentsErrorMessage, project.id]);
 
   return (
     <div {...stylex.props(styles.page)}>
@@ -733,6 +759,30 @@ function toDocumentRetryErrorMessage(error: unknown): string {
   }
 
   return "문서 처리를 다시 시도하지 못했습니다.";
+}
+
+function toDocumentRefreshErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 404) {
+      return "문서 처리 상태를 갱신하지 못했습니다. 프로젝트를 찾을 수 없습니다.";
+    }
+
+    if (error.status === 422) {
+      return "문서 처리 상태를 갱신하지 못했습니다. owner 설정 또는 요청값을 확인해주세요.";
+    }
+
+    return `문서 처리 상태를 갱신하지 못했습니다. 서버가 ${error.status} 응답을 반환했습니다.`;
+  }
+
+  if (error instanceof TypeError) {
+    return "문서 처리 상태를 갱신하지 못했습니다. 백엔드 서버 연결 상태를 확인해주세요.";
+  }
+
+  return "문서 처리 상태를 갱신하지 못했습니다.";
+}
+
+function isProcessingDocument(document: DocumentSummary): boolean {
+  return document.status === "TEXT_EXTRACTION_PENDING" || document.status === "TEXT_EXTRACTING";
 }
 
 function toChatErrorMessage(error: unknown): string {
