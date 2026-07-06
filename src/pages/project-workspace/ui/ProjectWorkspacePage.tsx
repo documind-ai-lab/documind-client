@@ -654,10 +654,21 @@ function SourceCard({ source }: { source: ChatSource }) {
         {source.quote}
       </Text>
       <Text type="supporting" display="block" xstyle={styles.sourceMeta}>
-        관련도 {source.relevance ?? "미산정"}
+        관련도 {formatSourceRelevance(source.relevance)}
       </Text>
     </Card>
   );
+}
+
+function formatSourceRelevance(relevance: number | null): string {
+  if (relevance === null) {
+    return "미산정";
+  }
+
+  return new Intl.NumberFormat("ko-KR", {
+    style: "percent",
+    maximumFractionDigits: 0
+  }).format(relevance);
 }
 
 function EvidencePanelContent({
