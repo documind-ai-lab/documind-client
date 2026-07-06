@@ -1,4 +1,5 @@
 import { Badge } from "@astryxdesign/core/Badge";
+import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { Text } from "@astryxdesign/core/Text";
 import * as stylex from "@stylexjs/stylex";
@@ -29,6 +30,15 @@ const styles = stylex.create({
   failure: {
     marginTop: 10,
     color: "#8a1f1f"
+  },
+  footer: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginTop: 12,
+    "@media (max-width: 560px)": {
+      flexDirection: "column"
+    }
   }
 });
 
@@ -39,7 +49,19 @@ const statusBadgeVariants: Record<DocumentStatus, "blue" | "green" | "neutral" |
   FAILED: "red"
 };
 
-export function DocumentListItem({ document }: { document: DocumentSummary }) {
+export function DocumentListItem({
+  document,
+  isRetryPending = false,
+  isRetryDisabled = false,
+  onRetry
+}: {
+  document: DocumentSummary;
+  isRetryPending?: boolean;
+  isRetryDisabled?: boolean;
+  onRetry?: (document: DocumentSummary) => void;
+}) {
+  const canRetry = document.status === "FAILED" && onRetry;
+
   return (
     <Card padding={3} xstyle={styles.card}>
       <div {...stylex.props(styles.header)}>
@@ -68,6 +90,18 @@ export function DocumentListItem({ document }: { document: DocumentSummary }) {
         <Text type="supporting" display="block" xstyle={styles.failure}>
           {document.failureReason}
         </Text>
+      ) : null}
+
+      {canRetry ? (
+        <div {...stylex.props(styles.footer)}>
+          <Button
+            label="다시 시도"
+            variant="secondary"
+            isDisabled={isRetryPending || isRetryDisabled}
+            isLoading={isRetryPending}
+            onClick={() => onRetry(document)}
+          />
+        </div>
       ) : null}
     </Card>
   );

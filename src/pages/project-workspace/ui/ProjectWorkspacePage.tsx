@@ -11,7 +11,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { createChatMessage, listChatMessages } from "@/entities/chat/api";
 import { ChatMessage, ChatSource } from "@/entities/chat/model";
 import { ChatMessageItem } from "@/entities/chat/ui/ChatMessageItem";
-import { listDocuments } from "@/entities/document/api";
+import { listDocuments, retryDocument } from "@/entities/document/api";
 import { DocumentSummary } from "@/entities/document/model";
 import { DocumentListItem } from "@/entities/document/ui/DocumentListItem";
 import { ProjectSummary, projectTypeLabels } from "@/entities/project/model";
@@ -158,6 +158,8 @@ export function ProjectWorkspacePage({
   const [documentPage, setDocumentPage] = useState<PageResponse<DocumentSummary> | null>(null);
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
   const [documentsErrorMessage, setDocumentsErrorMessage] = useState<string | null>(null);
+  const [documentActionErrorMessage, setDocumentActionErrorMessage] = useState<string | null>(null);
+  const [retryingDocumentId, setRetryingDocumentId] = useState<string | null>(null);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [chatPage, setChatPage] = useState<PageResponse<ChatMessage> | null>(null);
   const [isChatLoading, setIsChatLoading] = useState(true);
@@ -169,6 +171,7 @@ export function ProjectWorkspacePage({
   async function loadDocuments() {
     setIsDocumentsLoading(true);
     setDocumentsErrorMessage(null);
+    setDocumentActionErrorMessage(null);
 
     try {
       setDocumentPage(await listDocuments({ projectId: project.id }));
@@ -239,6 +242,39 @@ export function ProjectWorkspacePage({
     }
   }
 
+  async function handleRetryDocument(document: DocumentSummary) {
+    if (retryingDocumentId) {
+      return;
+    }
+
+    setRetryingDocumentId(document.id);
+    setDocumentActionErrorMessage(null);
+
+    try {
+      const updatedDocument = await retryDocument({
+        projectId: project.id,
+        documentId: document.id
+      });
+
+      setDocumentPage((currentPage) => {
+        if (!currentPage) {
+          return currentPage;
+        }
+
+        return {
+          ...currentPage,
+          items: currentPage.items.map((item) =>
+            item.id === updatedDocument.id ? updatedDocument : item
+          )
+        };
+      });
+    } catch (error) {
+      setDocumentActionErrorMessage(toDocumentRetryErrorMessage(error));
+    } finally {
+      setRetryingDocumentId(null);
+    }
+  }
+
   const documents = documentPage?.items ?? [];
   const documentCount = documentPage?.total ?? project.documentCount;
   const chatMessages = chatPage?.items ?? [];
@@ -299,8 +335,22 @@ export function ProjectWorkspacePage({
               {!isDocumentsLoading && !documentsErrorMessage && documents.length > 0 ? (
                 <div {...stylex.props(styles.documentList)}>
                   {documents.map((document) => (
-                    <DocumentListItem key={document.id} document={document} />
+                    <DocumentListItem
+                      key={document.id}
+                      document={document}
+                      isRetryPending={retryingDocumentId === document.id}
+                      isRetryDisabled={Boolean(retryingDocumentId)}
+                      onRetry={handleRetryDocument}
+                    />
                   ))}
+                </div>
+              ) : null}
+
+              {!isDocumentsLoading && !documentsErrorMessage && documentActionErrorMessage ? (
+                <div {...stylex.props(styles.errorBox)}>
+                  <Text weight="medium" display="block">
+                    {documentActionErrorMessage}
+                  </Text>
                 </div>
               ) : null}
 
@@ -655,6 +705,34 @@ function toDocumentErrorMessage(error: unknown): string {
   }
 
   return "문서 목록을 불러오지 못했습니다.";
+}
+
+function toDocumentRetryErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 400) {
+      return "프로젝트 또는 문서 식별자 형식을 확인해주세요.";
+    }
+
+    if (error.status === 404) {
+      return "재시도할 문서를 찾을 수 없습니다.";
+    }
+
+    if (error.status === 409) {
+      return "현재 문서 상태에서는 다시 시도할 수 없습니다. 목록을 다시 불러와 확인해주세요.";
+    }
+
+    if (error.status === 422) {
+      return "owner 설정 또는 요청값을 확인해주세요.";
+    }
+
+    return `서버가 ${error.status} 응답을 반환했습니다.`;
+  }
+
+  if (error instanceof TypeError) {
+    return "백엔드 서버에 연결할 수 없습니다.";
+  }
+
+  return "문서 처리를 다시 시도하지 못했습니다.";
 }
 
 function toChatErrorMessage(error: unknown): string {
