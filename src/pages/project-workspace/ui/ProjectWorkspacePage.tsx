@@ -7,7 +7,7 @@ import { SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { Text } from "@astryxdesign/core/Text";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import * as stylex from "@stylexjs/stylex";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createChatMessage, listChatMessages } from "@/entities/chat/api";
 import { ChatMessage, ChatSource } from "@/entities/chat/model";
 import { ChatMessageItem } from "@/entities/chat/ui/ChatMessageItem";
@@ -169,6 +169,7 @@ export function ProjectWorkspacePage({
   const [question, setQuestion] = useState("");
   const [isSendingQuestion, setIsSendingQuestion] = useState(false);
   const [activeEvidenceTab, setActiveEvidenceTab] = useState<EvidenceTab>("sources");
+  const latestChatMessageRef = useRef<HTMLDivElement | null>(null);
 
   async function loadDocuments() {
     setIsDocumentsLoading(true);
@@ -290,6 +291,7 @@ export function ProjectWorkspacePage({
   const hasProcessingDocuments = documents.some(isProcessingDocument);
   const documentCount = documentPage?.total ?? project.documentCount;
   const chatMessages = chatPage?.items ?? [];
+  const latestChatMessageId = chatMessages.at(-1)?.id;
   const latestAssistantSources = useMemo(
     () =>
       [...chatMessages]
@@ -319,6 +321,17 @@ export function ProjectWorkspacePage({
       window.clearInterval(intervalId);
     };
   }, [hasProcessingDocuments, documentsErrorMessage, project.id]);
+
+  useEffect(() => {
+    if (!latestChatMessageId) {
+      return;
+    }
+
+    latestChatMessageRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end"
+    });
+  }, [latestChatMessageId]);
 
   return (
     <div {...stylex.props(styles.page)}>
@@ -468,6 +481,7 @@ export function ProjectWorkspacePage({
                 {chatMessages.map((message) => (
                   <ChatMessageItem key={message.id} message={message} />
                 ))}
+                <div ref={latestChatMessageRef} />
               </div>
             ) : null}
 
