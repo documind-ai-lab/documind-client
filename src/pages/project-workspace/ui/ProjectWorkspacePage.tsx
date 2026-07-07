@@ -169,6 +169,7 @@ export function ProjectWorkspacePage({
   const [chatErrorMessage, setChatErrorMessage] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
   const [isSendingQuestion, setIsSendingQuestion] = useState(false);
+  const [pendingUserQuestion, setPendingUserQuestion] = useState<PendingUserQuestion | null>(null);
   const [activeEvidenceTab, setActiveEvidenceTab] = useState<EvidenceTab>("sources");
   const latestChatMessageRef = useRef<HTMLDivElement | null>(null);
 
@@ -216,6 +217,11 @@ export function ProjectWorkspacePage({
     void loadChatMessages();
   }, [project.id]);
 
+  useEffect(() => {
+    setPendingUserQuestion(null);
+    setQuestion("");
+  }, [project.id]);
+
   async function handleSendQuestion(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -227,10 +233,15 @@ export function ProjectWorkspacePage({
 
     setIsSendingQuestion(true);
     setChatErrorMessage(null);
+    setPendingUserQuestion({
+      id: `pending-user-${Date.now()}`,
+      content,
+      createdAt: new Date().toISOString()
+    });
+    setQuestion("");
 
     try {
       const response = await createChatMessage({ projectId: project.id, content });
-      setQuestion("");
       setChatPage((currentPage) => {
         if (!currentPage) {
           return {
@@ -249,8 +260,10 @@ export function ProjectWorkspacePage({
         };
       });
     } catch (error) {
+      setQuestion(content);
       setChatErrorMessage(toChatErrorMessage(error));
     } finally {
+      setPendingUserQuestion(null);
       setIsSendingQuestion(false);
     }
   }
@@ -292,7 +305,24 @@ export function ProjectWorkspacePage({
   const hasProcessingDocuments = documents.some(isProcessingDocument);
   const documentCount = documentPage?.total ?? project.documentCount;
   const chatMessages = chatPage?.items ?? [];
-  const latestChatMessageId = chatMessages.at(-1)?.id;
+  const displayedChatMessages = useMemo(() => {
+    if (!pendingUserQuestion) {
+      return chatMessages;
+    }
+
+    return [
+      ...chatMessages,
+      {
+        id: pendingUserQuestion.id,
+        projectId: project.id,
+        role: "USER" as const,
+        content: pendingUserQuestion.content,
+        createdAt: pendingUserQuestion.createdAt,
+        sources: []
+      }
+    ];
+  }, [chatMessages, pendingUserQuestion, project.id]);
+  const latestChatMessageId = displayedChatMessages.at(-1)?.id;
   const latestAssistantSources = useMemo(
     () =>
       [...chatMessages]
@@ -454,7 +484,7 @@ export function ProjectWorkspacePage({
               </div>
             ) : null}
 
-            {!isChatLoading && !isSendingQuestion && chatMessages.length === 0 ? (
+            {!isChatLoading && !isSendingQuestion && displayedChatMessages.length === 0 ? (
               <Text type="supporting" display="block">
                 아직 대화가 없습니다. 문서를 업로드한 뒤 검토할 내용을 질문하세요.
               </Text>
@@ -477,9 +507,9 @@ export function ProjectWorkspacePage({
               </div>
             </div>
 
-            {chatMessages.length > 0 || isSendingQuestion ? (
+            {displayedChatMessages.length > 0 || isSendingQuestion ? (
               <div {...stylex.props(styles.chatList)}>
-                {chatMessages.map((message) => (
+                {displayedChatMessages.map((message) => (
                   <ChatMessageItem key={message.id} message={message} />
                 ))}
                 {isSendingQuestion ? <ChatPendingMessageItem /> : null}
@@ -560,6 +590,12 @@ export function ProjectWorkspacePage({
 type SuggestedQuestion = {
   label: string;
   prompt: string;
+};
+
+type PendingUserQuestion = {
+  id: string;
+  content: string;
+  createdAt: string;
 };
 
 type EvidenceTab = "sources" | "risks" | "facts" | "summary";
