@@ -171,6 +171,7 @@ export function ProjectWorkspacePage({
   const [isSendingQuestion, setIsSendingQuestion] = useState(false);
   const [pendingUserQuestion, setPendingUserQuestion] = useState<PendingUserQuestion | null>(null);
   const [activeEvidenceTab, setActiveEvidenceTab] = useState<EvidenceTab>("sources");
+  const [selectedAssistantMessageId, setSelectedAssistantMessageId] = useState<string | null>(null);
   const latestChatMessageRef = useRef<HTMLDivElement | null>(null);
 
   async function loadDocuments() {
@@ -220,6 +221,7 @@ export function ProjectWorkspacePage({
   useEffect(() => {
     setPendingUserQuestion(null);
     setQuestion("");
+    setSelectedAssistantMessageId(null);
   }, [project.id]);
 
   async function handleSendQuestion(event: FormEvent<HTMLFormElement>) {
@@ -259,6 +261,7 @@ export function ProjectWorkspacePage({
           total: currentPage.total + 2
         };
       });
+      setSelectedAssistantMessageId(response.assistantMessage.id);
     } catch (error) {
       setQuestion(content);
       setChatErrorMessage(toChatErrorMessage(error));
@@ -323,14 +326,22 @@ export function ProjectWorkspacePage({
     ];
   }, [chatMessages, pendingUserQuestion, project.id]);
   const latestChatMessageId = displayedChatMessages.at(-1)?.id;
-  const latestAssistantSources = useMemo(
+  const selectedAssistantMessage = useMemo(
+    () =>
+      chatMessages.find(
+        (message) => message.role === "ASSISTANT" && message.id === selectedAssistantMessageId
+      ) ?? null,
+    [chatMessages, selectedAssistantMessageId]
+  );
+  const latestAssistantMessageWithSources = useMemo(
     () =>
       [...chatMessages]
         .reverse()
-        .find((message) => message.role === "ASSISTANT" && message.sources.length > 0)
-        ?.sources ?? [],
+        .find((message) => message.role === "ASSISTANT" && message.sources.length > 0) ?? null,
     [chatMessages]
   );
+  const activeAssistantMessage = selectedAssistantMessage ?? latestAssistantMessageWithSources;
+  const activeAssistantSources = activeAssistantMessage?.sources ?? [];
   const trimmedQuestion = question.trim();
   const isQuestionInvalid = trimmedQuestion.length > 4000;
   const canSendQuestion =
@@ -352,6 +363,20 @@ export function ProjectWorkspacePage({
       window.clearInterval(intervalId);
     };
   }, [hasProcessingDocuments, documentsErrorMessage, project.id]);
+
+  useEffect(() => {
+    if (!selectedAssistantMessageId) {
+      return;
+    }
+
+    const selectedMessageExists = chatMessages.some(
+      (message) => message.role === "ASSISTANT" && message.id === selectedAssistantMessageId
+    );
+
+    if (!selectedMessageExists) {
+      setSelectedAssistantMessageId(null);
+    }
+  }, [chatMessages, selectedAssistantMessageId]);
 
   useEffect(() => {
     if (!latestChatMessageId && !isSendingQuestion) {
@@ -510,7 +535,21 @@ export function ProjectWorkspacePage({
             {displayedChatMessages.length > 0 || isSendingQuestion ? (
               <div {...stylex.props(styles.chatList)}>
                 {displayedChatMessages.map((message) => (
-                  <ChatMessageItem key={message.id} message={message} />
+                  <ChatMessageItem
+                    key={message.id}
+                    message={message}
+                    isSelected={
+                      message.role === "ASSISTANT" && message.id === activeAssistantMessage?.id
+                    }
+                    onSelect={
+                      message.role === "ASSISTANT"
+                        ? (assistantMessage) => {
+                            setSelectedAssistantMessageId(assistantMessage.id);
+                            setActiveEvidenceTab("sources");
+                          }
+                        : undefined
+                    }
+                  />
                 ))}
                 {isSendingQuestion ? <ChatPendingMessageItem /> : null}
                 <div ref={latestChatMessageRef} />
@@ -569,7 +608,7 @@ export function ProjectWorkspacePage({
 
             <EvidencePanelContent
               activeTab={activeEvidenceTab}
-              sources={latestAssistantSources}
+              sources={activeAssistantSources}
             />
           </div>
         </aside>

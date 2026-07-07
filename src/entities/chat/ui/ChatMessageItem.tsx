@@ -10,8 +10,24 @@ const styles = stylex.create({
     boxShadow: "none",
     backgroundColor: "#ffffff"
   },
+  selectedCard: {
+    borderColor: "#0f766e",
+    backgroundColor: "#f0fdfa"
+  },
   userCard: {
     backgroundColor: "#f3f8ff"
+  },
+  selectButton: {
+    all: "unset",
+    boxSizing: "border-box",
+    display: "block",
+    width: "100%",
+    cursor: "pointer",
+    borderRadius: 8,
+    ":focus-visible": {
+      outline: "2px solid #0f766e",
+      outlineOffset: 3
+    }
   },
   header: {
     display: "flex",
@@ -32,11 +48,23 @@ const styles = stylex.create({
   }
 });
 
-export function ChatMessageItem({ message }: { message: ChatMessage }) {
+export function ChatMessageItem({
+  message,
+  isSelected = false,
+  onSelect
+}: {
+  message: ChatMessage;
+  isSelected?: boolean;
+  onSelect?: (message: ChatMessage) => void;
+}) {
   const isUser = message.role === "USER";
+  const isSelectable = !isUser && Boolean(onSelect);
 
-  return (
-    <Card padding={4} xstyle={[styles.card, isUser && styles.userCard]}>
+  const card = (
+    <Card
+      padding={4}
+      xstyle={[styles.card, isUser && styles.userCard, isSelected && styles.selectedCard]}
+    >
       <div {...stylex.props(styles.header)}>
         <Badge variant={isUser ? "blue" : "green"} label={isUser ? "사용자" : "AI"} />
         <Text type="supporting" display="block">
@@ -56,6 +84,22 @@ export function ChatMessageItem({ message }: { message: ChatMessage }) {
         </div>
       ) : null}
     </Card>
+  );
+
+  if (!isSelectable) {
+    return card;
+  }
+
+  return (
+    <button
+      type="button"
+      {...stylex.props(styles.selectButton)}
+      aria-pressed={isSelected}
+      aria-label="이 AI 답변의 출처 보기"
+      onClick={() => onSelect?.(message)}
+    >
+      {card}
+    </button>
   );
 }
 
