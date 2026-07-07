@@ -142,6 +142,14 @@ const styles = stylex.create({
     display: "grid",
     gap: 12
   },
+  evidenceContext: {
+    display: "grid",
+    gap: 8,
+    padding: 14,
+    border: "1px solid #dde3ea",
+    borderRadius: 8,
+    backgroundColor: "#f8fafc"
+  },
   sourceQuote: {
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere"
@@ -333,15 +341,18 @@ export function ProjectWorkspacePage({
       ) ?? null,
     [chatMessages, selectedAssistantMessageId]
   );
-  const latestAssistantMessageWithSources = useMemo(
+  const latestAssistantMessage = useMemo(
     () =>
-      [...chatMessages]
-        .reverse()
-        .find((message) => message.role === "ASSISTANT" && message.sources.length > 0) ?? null,
+      [...chatMessages].reverse().find((message) => message.role === "ASSISTANT") ?? null,
     [chatMessages]
   );
-  const activeAssistantMessage = selectedAssistantMessage ?? latestAssistantMessageWithSources;
+  const activeAssistantMessage = selectedAssistantMessage ?? latestAssistantMessage;
   const activeAssistantSources = activeAssistantMessage?.sources ?? [];
+  const evidenceContextMode: EvidenceContextMode = selectedAssistantMessage
+    ? "selected"
+    : activeAssistantMessage
+      ? "latest"
+      : "none";
   const trimmedQuestion = question.trim();
   const isQuestionInvalid = trimmedQuestion.length > 4000;
   const canSendQuestion =
@@ -594,6 +605,10 @@ export function ProjectWorkspacePage({
         <aside {...stylex.props(styles.aside)}>
           <div {...stylex.props(styles.stack)}>
             <Heading level={2}>출처와 근거</Heading>
+            <EvidenceContextCard
+              mode={evidenceContextMode}
+              message={activeAssistantMessage}
+            />
             <SegmentedControl
               value={activeEvidenceTab}
               onChange={(nextTab) => setActiveEvidenceTab(nextTab as EvidenceTab)}
@@ -638,6 +653,8 @@ type PendingUserQuestion = {
 };
 
 type EvidenceTab = "sources" | "risks" | "facts" | "summary";
+
+type EvidenceContextMode = "selected" | "latest" | "none";
 
 const evidenceTabs: Array<{ value: EvidenceTab; label: string }> = [
   { value: "sources", label: "출처" },
@@ -733,6 +750,47 @@ function SourceCard({ source }: { source: ChatSource }) {
       </Text>
     </Card>
   );
+}
+
+function EvidenceContextCard({
+  mode,
+  message
+}: {
+  mode: EvidenceContextMode;
+  message: ChatMessage | null;
+}) {
+  if (!message) {
+    return (
+      <div {...stylex.props(styles.evidenceContext)}>
+        <Text weight="medium" display="block">
+          표시할 AI 답변이 없습니다.
+        </Text>
+        <Text type="supporting" display="block">
+          AI 답변이 생성되면 해당 답변의 출처와 근거를 확인할 수 있습니다.
+        </Text>
+      </div>
+    );
+  }
+
+  return (
+    <div {...stylex.props(styles.evidenceContext)}>
+      <Text weight="medium" display="block">
+        {mode === "selected" ? "선택한 AI 답변 기준" : "최근 AI 답변 기준"}
+      </Text>
+      <Text type="supporting" display="block">
+        {formatPanelDateTime(message.createdAt)} · 출처 {message.sources.length}개
+      </Text>
+    </div>
+  );
+}
+
+function formatPanelDateTime(value: string): string {
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(value));
 }
 
 function formatSourceRelevance(relevance: number | null): string {
